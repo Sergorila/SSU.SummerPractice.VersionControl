@@ -10,12 +10,12 @@ namespace Files
         {
             Console.WriteLine("Input path to directory with files");
             var pathF = CheckPath();
+            Console.WriteLine("Input path to directory with files");
+            var pathL = CheckPath();
 
-            Restorer r = new Restorer(pathF);
-            r.CreateDirectory();
-            r.DirectoryCopy(pathF, pathF + @"\.versions\1", true);
-            Logger l = new Logger(pathF, pathF + @"\.versions");
-            l.Status();
+            UserConsole u = new UserConsole(pathF, pathL);
+            u.Hub();
+
         }
 
         public static string CheckPath()

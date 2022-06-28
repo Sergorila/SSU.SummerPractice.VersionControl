@@ -7,17 +7,16 @@ namespace Files
     {
         private string _logDirectory;
 
-        public Restorer(string FilesDirectory)
+        public Restorer(string logDirectory)
         {
-            _logDirectory = FilesDirectory + @"\.versions";
+            _logDirectory = logDirectory;
         }
 
         public void CreateDirectory()
         {
             if (!Directory.Exists(_logDirectory))
             {
-                DirectoryInfo di = Directory.CreateDirectory(_logDirectory);
-                di.Attributes = FileAttributes.Directory | FileAttributes.Hidden;
+                Directory.CreateDirectory(_logDirectory);
             }
         }
 
@@ -56,6 +55,21 @@ namespace Files
                     }
                 }
             }
+        }
+
+        public string BackupName()
+        {
+            DirectoryInfo di = new DirectoryInfo(_logDirectory);
+            return _logDirectory + @"\" + (di.GetDirectories().Length + 1).ToString();
+        }
+        public bool FirstCommit()
+        {
+            if (new DirectoryInfo(_logDirectory).GetDirectories().Length == 0)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }
