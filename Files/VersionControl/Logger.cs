@@ -25,52 +25,68 @@ namespace Files
  
             var list1 = dir1.GetFiles("*.*", SearchOption.AllDirectories);
             var list2 = dir2.GetFiles("*.*", SearchOption.AllDirectories);
- 
-            FileCompare fileCompare = new FileCompare();
-  
-            bool areIdentical = list1.SequenceEqual(list2, fileCompare);
 
-            if (areIdentical == true)
+            FileCompare fileCompare = new FileCompare();
+
+            if (AreIdentical(list1, list2))
             {
                 Console.WriteLine("The local files and repo files are the same");
             }
             else
             {
                 Console.WriteLine("The local files and repo files are not the same");
-                if (list1.Length == list2.Length)
-                {
-                    var queryList = list1.Intersect(list2, fileCompare);
-                    Console.WriteLine("Modified files:");
 
-                    foreach (var item in queryList)
+                var queryList = list1.Intersect(list2, fileCompare);
+
+                List<FileInfo> modf = new List<FileInfo>();
+
+                foreach(var localFile in list1)
+                {
+                    if (list2.Any(repoFile => repoFile.Name == localFile.Name && 
+                            repoFile.Length != localFile.Length))
                     {
-                        Console.WriteLine(item.FullName);
+                        modf.Add(localFile);
                     }
                 }
-                else if (list1.Length > list2.Length)
-                {
-                    var queryList1Only = (from file in list1
-                                          select file).Except(list2, fileCompare);
 
-                    Console.WriteLine("New files:");
+                GetModifiedFiles(modf);
+                var queryList1Only = (from file in list1
+                                      select file).Except(list2, fileCompare).Except(modf);
+                GetNewFiles(queryList1Only);
 
-                    foreach (var item in queryList1Only)
-                    {
-                        Console.WriteLine(item.FullName);
-                    }
-                }
-                else
-                {
-                    var queryList2Only = (from file in list2
-                                          select file).Except(list1, fileCompare);
+                var queryList2Only = (from file in list2
+                                      select file).Except(list1, fileCompare).Except(modf);
+                GetDeletedFiles(queryList2Only);
+            }
+        }
 
-                    Console.WriteLine("Deleted files:");
+        public bool AreIdentical(FileInfo[] list1, FileInfo[] list2)
+        {
+            return list1.SequenceEqual(list2, new FileCompare());
+        }
 
-                    foreach (var item in queryList2Only)
-                    {
-                        Console.WriteLine(item.FullName);
-                    }
-                }
+        public void GetDeletedFiles(IEnumerable<FileInfo> list)
+        {
+            foreach (var item in list)
+            {
+                Console.WriteLine("deleted: {0}", item.FullName);
+            }
+        }
+
+        public void GetNewFiles(IEnumerable<FileInfo> list)
+        {
+
+            foreach (var item in list)
+            {
+                Console.WriteLine("new file: {0}", item.FullName);
+            }
+        }
+
+        public void GetModifiedFiles(IEnumerable<FileInfo> list)
+        {
+            foreach (var item in list)
+            {
+                Console.WriteLine("modified: {0}", item.FullName);
             }
         }
     }

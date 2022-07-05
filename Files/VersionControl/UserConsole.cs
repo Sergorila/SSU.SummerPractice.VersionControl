@@ -9,7 +9,6 @@ namespace Files
     public class UserConsole
     {
         private string _pathF;
-        private string _pathL;
         private Restorer _restorer;
         private Logger _logger;
 

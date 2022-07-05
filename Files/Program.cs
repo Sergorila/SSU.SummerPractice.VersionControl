@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-
+using System.Linq;
 
 namespace Files
 {
@@ -12,6 +12,7 @@ namespace Files
             var pathF = CheckPath();
             Console.WriteLine("Input path to directory with files");
             var pathL = CheckPath();
+            
 
             UserConsole u = new UserConsole(pathF, pathL);
             u.Hub();
