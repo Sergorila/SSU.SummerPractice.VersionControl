@@ -9,65 +9,153 @@ namespace Files
     {
         private string _filesDirectory;
         private string _logDirectory;
+        private Dictionary<string, FileIndex> _history;
+
+        public List<FileInfo> Newfiles { get; set; }
+        public List<FileInfo> Delfiles { get; set; }
+        public List<FileInfo> Modfiles { get; set; }
 
         public Logger(string FilesDirectory, string LogDirectory)
         {
             _filesDirectory = FilesDirectory;
             _logDirectory = LogDirectory;
+            Newfiles = new List<FileInfo>();
+            Delfiles = new List<FileInfo>();
+            Modfiles = new List<FileInfo>();
+            _history = new Dictionary<string, FileIndex>();
+            FileInfo hist = new FileInfo(_filesDirectory + @"\index.txt");
+            if (hist.Exists)
+            {
+                using (StreamReader sr = new StreamReader(_filesDirectory + @"\index.txt"))
+                {
+                    string input;
+                    while((input = sr.ReadLine()) != null)
+                    {
+                        var info = input.Split(";");
+                        FileIndex elem = new FileIndex(info[1], info[2], int.Parse(info[3]));
+                        _history.Add(info[0], elem);
+                    }
+                    sr.Close();
+                }
+            }
+            else
+            {
+                var fs = hist.Create();
+                fs.Close();
+            }
         }
 
         public void Status()
         {
+            Newfiles = new List<FileInfo>();
+            Delfiles = new List<FileInfo>();
+            Modfiles = new List<FileInfo>();
             var dir1 = new DirectoryInfo(_filesDirectory);
             var logDir = new DirectoryInfo(_logDirectory);
             var logDirs = logDir.GetDirectories();
-            var dir2 = logDirs[^1];
- 
-            var list1 = dir1.GetFiles("*.*", SearchOption.AllDirectories);
-            var list2 = dir2.GetFiles("*.*", SearchOption.AllDirectories);
-
             FileCompare fileCompare = new FileCompare();
-
-            if (AreIdentical(list1, list2))
+            if (logDirs.Length != 0)
             {
-                Console.WriteLine("The local files and repo files are the same");
-            }
-            else
-            {
-                Console.WriteLine("The local files and repo files are not the same");
+                var dir2 = logDirs[^1];
 
-                var queryList = list1.Intersect(list2, fileCompare);
-
-                List<FileInfo> modf = new List<FileInfo>();
-
-                foreach(var localFile in list1)
+                var list1 = dir1.GetFiles("*.*", SearchOption.AllDirectories);
+                var list2 = dir2.GetFiles("*.*", SearchOption.AllDirectories);
+                foreach (var localFile in list1)
                 {
-                    if (list2.Any(repoFile => repoFile.Name == localFile.Name && 
-                            repoFile.Length != localFile.Length))
+                    if (!localFile.FullName.Contains("index.txt"))
                     {
-                        modf.Add(localFile);
+                        if (_history.ContainsKey(localFile.Name))
+                        {
+                            if (localFile.FullName == _history[localFile.Name].FullPath)
+                            {
+                                if (fileCompare.GetHashCode(localFile) != _history[localFile.Name].Hash)
+                                {
+                                    Modfiles.Add(localFile);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Newfiles.Add(localFile);
+                        }
+                    }
+                    
+                }
+
+                foreach(var key in _history.Keys)
+                {
+                    FileInfo file = new FileInfo(_history[key].FullPath);
+                    if (!file.Exists)
+                    {
+                        var delPath = logDirs[int.Parse(_history[key].Version) - 1];
+                        var files = delPath.GetFiles("*.*", SearchOption.AllDirectories);
+                        foreach (var delfile in files)
+                        {
+                            if (delfile.Name == file.Name)
+                            {
+                                
+                                Delfiles.Add(delfile);
+                            }
+                        }
                     }
                 }
 
-                GetModifiedFiles(modf);
-                var queryList1Only = (from file in list1
-                                      select file).Except(list2, fileCompare).Except(modf);
-                GetNewFiles(queryList1Only);
+                GetModifiedFiles(Modfiles);
+                GetNewFiles(Newfiles);
+                GetDeletedFiles(Delfiles);
 
-                var queryList2Only = (from file in list2
-                                      select file).Except(list1, fileCompare).Except(modf);
-                GetDeletedFiles(queryList2Only);
             }
+            else
+            {
+                Console.WriteLine("The first commit");
+                Newfiles = dir1.GetFiles("*.*", SearchOption.AllDirectories).ToList();
+                foreach (var file in Newfiles)
+                {
+                    if (file.FullName.Contains("index.txt"))
+                    {
+                        Newfiles.Remove(file);
+                        break;
+                    }
+                }
+                GetNewFiles(Newfiles);
+            }
+            
         }
 
-        public bool AreIdentical(FileInfo[] list1, FileInfo[] list2)
+        public void CreateHistory(int num)
         {
-            return list1.SequenceEqual(list2, new FileCompare());
+            FileCompare fileCompare = new FileCompare();
+            foreach (var file in Newfiles)
+            {
+                FileIndex temp = new FileIndex(file.FullName, num.ToString(), fileCompare.GetHashCode(file));
+                _history.Add(file.Name, temp);
+            }
+            foreach(var file in Modfiles)
+            {
+                _history[file.Name].Version = num.ToString();
+                _history[file.Name].Hash = fileCompare.GetHashCode(file);
+            }
+            foreach(var file in Delfiles)
+            {
+                _history.Remove(file.Name);
+            }
+
+            using (StreamWriter sw = new StreamWriter(_filesDirectory + @"\index.txt", false))
+            {
+                foreach (var file in _history.Keys)
+                {
+                    sw.WriteLine(file + ";" + _history[file].FullPath + ";" + _history[file].Version + ";" + _history[file].Hash);
+                }
+                sw.Close();
+            }
+            Newfiles.Clear();
+            Modfiles.Clear();
+            Delfiles.Clear();
         }
 
         public void GetDeletedFiles(IEnumerable<FileInfo> list)
         {
-            foreach (var item in list)
+            foreach (var item in Delfiles)
             {
                 Console.WriteLine("deleted: {0}", item.FullName);
             }
@@ -76,7 +164,7 @@ namespace Files
         public void GetNewFiles(IEnumerable<FileInfo> list)
         {
 
-            foreach (var item in list)
+            foreach (var item in Newfiles)
             {
                 Console.WriteLine("new file: {0}", item.FullName);
             }
@@ -84,10 +172,25 @@ namespace Files
 
         public void GetModifiedFiles(IEnumerable<FileInfo> list)
         {
-            foreach (var item in list)
+            foreach (var item in Modfiles)
             {
                 Console.WriteLine("modified: {0}", item.FullName);
             }
+        }
+
+        public List<FileInfo> GetDeletedFile()
+        {
+            return Delfiles;
+        }
+
+        public List<FileInfo> GetNewFile()
+        {
+            return Newfiles;
+        }
+
+        public List<FileInfo> GetModifiedFile()
+        {
+            return Modfiles;
         }
     }
 }

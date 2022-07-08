@@ -9,7 +9,7 @@ namespace Files
 
         public bool Equals(FileInfo f1, FileInfo f2)
         {
-            return (f1.Name == f2.Name);
+            return (f1.Name == f2.Name && f1.Length == f2.Length);
         }
         
         public int GetHashCode(FileInfo fi)

@@ -9,6 +9,7 @@ namespace Files
     public class UserConsole
     {
         private string _pathF;
+        private string _pathL;
         private Restorer _restorer;
         private Logger _logger;
 
@@ -21,10 +22,6 @@ namespace Files
         }
         public void Hub()
         {
-            if (_restorer.FirstCommit())
-            {
-                _restorer.DirectoryCopy(_pathF, _restorer.BackupName(), true);
-            }
 
             while (true)
             {
@@ -47,7 +44,7 @@ namespace Files
                         break;
                     case 2:
                         Console.Clear();
-                        _restorer.DirectoryCopy(_pathF, _restorer.BackupName(), true);
+                        _restorer.Commit(_logger);
                         Console.WriteLine("Commit is completed");
                         break;
                     case 3:

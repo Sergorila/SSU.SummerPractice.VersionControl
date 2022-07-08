@@ -10,7 +10,21 @@ namespace Files
         public Restorer(string logDirectory)
         {
             _logDirectory = logDirectory;
+            var di = new DirectoryInfo(_logDirectory).GetDirectories().Length;
+            {
+                if (di == 0)
+                {
+                    Comnum = 1;
+                }
+                else
+                {
+                    Comnum = di + 1;
+                }
+            }
+            
         }
+
+        public int Comnum { get; set; }
 
         public void CreateDirectory()
         {
@@ -55,6 +69,52 @@ namespace Files
                     }
                 }
             }
+        }
+
+        public void Commit(Logger log)
+        {
+            string path = _logDirectory + @"\" + Comnum;
+            DirectoryInfo deld = new DirectoryInfo(path + @"\del");
+            Directory.CreateDirectory(path + @"\del");
+            DirectoryInfo newd = new DirectoryInfo(path + @"\new");
+            Directory.CreateDirectory(path + @"\new");
+            DirectoryInfo modd = new DirectoryInfo(path + @"\mod");
+            Directory.CreateDirectory(path + @"\mod");
+            var delf = log.Delfiles;
+            var newf = log.Newfiles;
+            var modf = log.Modfiles;
+            foreach (var item in modf)
+            {
+                FileAttributes attr = File.GetAttributes(item.FullName);
+                if ((attr & FileAttributes.Directory) != FileAttributes.Directory)
+                {
+                    item.CopyTo(modd.FullName + @"\" + item.Name);
+                }
+                
+            }
+            foreach (var item in delf)
+            {
+                FileAttributes attr = File.GetAttributes(item.FullName);
+                if ((attr & FileAttributes.Directory) != FileAttributes.Directory)
+                {
+                    item.CopyTo(deld.FullName + @"\" + item.Name);
+                }
+            }
+            foreach (var item in newf)
+            {
+                FileAttributes attr = File.GetAttributes(item.FullName);
+                if ((attr & FileAttributes.Directory) != FileAttributes.Directory)
+                {
+                    item.CopyTo(newd.FullName + @"\" + item.Name);
+                }
+            }
+            CreateHistory(log, Comnum);
+            Comnum++;
+        }
+
+        public void CreateHistory(Logger log, int num)
+        {
+            log.CreateHistory(num);
         }
 
         public string BackupName()
