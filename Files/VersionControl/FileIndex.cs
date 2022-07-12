@@ -10,13 +10,16 @@ namespace Files
     {
         public string FullPath {get; set;}
         public string Version { get; set; }
-        public int Hash { get; set; }
+        public string Hash { get; set; }
 
-        public FileIndex(string fullPath, string version, int hash)
+        public string Index { get; set; }
+
+        public FileIndex(string fullPath, string version, string hash, string index)
         {
             FullPath = fullPath;
             Version = version;
             Hash = hash;
+            Index = index;
         }
     }
 }

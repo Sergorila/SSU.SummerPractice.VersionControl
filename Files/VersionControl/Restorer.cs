@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Files
@@ -110,6 +111,74 @@ namespace Files
             }
             CreateHistory(log, Comnum);
             Comnum++;
+        }
+
+        private void ClearFolder(string FolderName)
+        {
+            DirectoryInfo dir = new DirectoryInfo(FolderName);
+
+            foreach (FileInfo fi in dir.GetFiles())
+            {
+                fi.Delete();
+            }
+
+            foreach (DirectoryInfo di in dir.GetDirectories())
+            {
+                ClearFolder(di.FullName);
+                di.Delete();
+            }
+        }
+
+        public void Backup(int num, string localFolder)
+        {
+            ClearFolder(localFolder);
+            var dir = new DirectoryInfo(_logDirectory);
+            var dirs = dir.GetDirectories();
+
+            for (int i = 0; i < num; i++)
+            {
+                Dictionary<string, FileIndex> backupFiles = new Dictionary<string, FileIndex>();
+                using (StreamReader sr = new StreamReader(_logDirectory + @"\" + (i + 1) + @"\index.txt"))
+                {
+                    string input;
+                    while ((input = sr.ReadLine()) != null)
+                    {
+                        var info = input.Split(";");
+                        FileIndex elem = new FileIndex(info[1], info[2], info[3], info[4]);
+                        backupFiles.Add(info[0], elem);
+                    }
+                    sr.Close();
+                }
+                var files = dirs[i].GetFiles("*.*", SearchOption.AllDirectories);
+                foreach (var file in files)
+                {
+                    if (backupFiles.ContainsKey(file.Name))
+                    {
+                        if (backupFiles[file.Name].Index == "new" || backupFiles[file.Name].Index == "mod")
+                        {
+                            File.Copy(file.FullName, localFolder + @"\" + file.Name, true);
+                        }
+                        if (backupFiles[file.Name].Index == "del")
+                        {
+                            DirectoryInfo locDir = new DirectoryInfo(localFolder);
+                            foreach (FileInfo fi in locDir.GetFiles("*.*", SearchOption.AllDirectories))
+                            {
+                                if (fi.Name == file.Name)
+                                {
+                                    fi.Delete();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        public string[] GetBackups()
+        {
+            var backups = Directory.GetDirectories(_logDirectory);
+            return backups;
         }
 
         public void CreateHistory(Logger log, int num)

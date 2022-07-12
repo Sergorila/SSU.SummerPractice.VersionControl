@@ -28,7 +28,8 @@ namespace Files
                 Console.WriteLine("Choose the number of the option\n" +
                     "1. Status\n" +
                     "2. Commit\n" +
-                    "3. Exit");
+                    "3. Backup\n" +
+                    "4. Exit");
 
                 if (!int.TryParse(Console.ReadLine(), out int choose))
                 {
@@ -44,10 +45,34 @@ namespace Files
                         break;
                     case 2:
                         Console.Clear();
+                        _logger.Status();
+                        Console.Clear();
                         _restorer.Commit(_logger);
                         Console.WriteLine("Commit is completed");
                         break;
                     case 3:
+                        var backups = _restorer.GetBackups();
+                        for (int i = 0; i < backups.Length; i++)
+                        {
+                            Console.WriteLine("{0}. {1}", i+1, backups[i]);
+                        }
+                        if (int.TryParse(Console.ReadLine(), out int backnum))
+                        {
+                            if (backnum >= 1 && backnum <= backups.Length)
+                            {
+                                _restorer.Backup(backnum, _pathF);
+                                _logger.Backup();
+                                _logger.Status();
+                                _restorer.Commit(_logger);
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error. Try again");
+                            continue;
+                        }
+                        return;
+                    case 4:
                         return;
                     default:
                         Console.WriteLine("Error. Try again");

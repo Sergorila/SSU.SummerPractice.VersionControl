@@ -32,7 +32,7 @@ namespace Files
                     while((input = sr.ReadLine()) != null)
                     {
                         var info = input.Split(";");
-                        FileIndex elem = new FileIndex(info[1], info[2], int.Parse(info[3]));
+                        FileIndex elem = new FileIndex(info[1], info[2], info[3], info[4]);
                         _history.Add(info[0], elem);
                     }
                     sr.Close();
@@ -68,7 +68,7 @@ namespace Files
                         {
                             if (localFile.FullName == _history[localFile.Name].FullPath)
                             {
-                                if (fileCompare.GetHashCode(localFile) != _history[localFile.Name].Hash)
+                                if (fileCompare.CalculateMD5(localFile.FullName) != _history[localFile.Name].Hash)
                                 {
                                     Modfiles.Add(localFile);
                                 }
@@ -127,15 +127,34 @@ namespace Files
             FileCompare fileCompare = new FileCompare();
             foreach (var file in Newfiles)
             {
-                FileIndex temp = new FileIndex(file.FullName, num.ToString(), fileCompare.GetHashCode(file));
+                FileIndex temp = new FileIndex(file.FullName, num.ToString(), fileCompare.CalculateMD5(file.FullName), "new");
                 _history.Add(file.Name, temp);
             }
             foreach(var file in Modfiles)
             {
                 _history[file.Name].Version = num.ToString();
-                _history[file.Name].Hash = fileCompare.GetHashCode(file);
+                _history[file.Name].Hash = fileCompare.CalculateMD5(file.FullName);
+                _history[file.Name].Index = "mod";
             }
-            foreach(var file in Delfiles)
+
+            foreach (var file in Delfiles)
+            {
+                _history[file.Name].Version = num.ToString();
+                _history[file.Name].Hash = fileCompare.CalculateMD5(file.FullName);
+                _history[file.Name].Index = "del";
+            }
+
+            using (StreamWriter sw = new StreamWriter(_logDirectory + @"\" + num + @"\index.txt", false))
+            {
+                foreach (var file in _history.Keys)
+                {
+                    sw.WriteLine(file + ";" + _history[file].FullPath + ";" + _history[file].Version + ";" + _history[file].Hash
+                        + ";" + _history[file].Index);
+                }
+                sw.Close();
+            }
+
+            foreach (var file in Delfiles)
             {
                 _history.Remove(file.Name);
             }
@@ -148,6 +167,13 @@ namespace Files
                 }
                 sw.Close();
             }
+            Newfiles.Clear();
+            Modfiles.Clear();
+            Delfiles.Clear();
+        }
+
+        public void Backup()
+        {
             Newfiles.Clear();
             Modfiles.Clear();
             Delfiles.Clear();
